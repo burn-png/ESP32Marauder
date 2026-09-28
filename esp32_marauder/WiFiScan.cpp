@@ -942,6 +942,41 @@ extern "C" {
           else if (wifi_scan_obj.currentScanMode == WIFI_SCAN_DETECT_FOLLOW) {
             int frame_check = wifi_scan_obj.update_mac_entry(mac_char, advertisedDevice->getRSSI(), true);
           }
+          else if (wifi_scan_obj.currentScanMode == BT_SCAN_AXON) { // OUI filter ported from nyanBOX axon_detector
+            // Axon/TASER OUI 00:25:df (mac is lowercase, MSB first)
+            if (mac.startsWith("00:25:df")) {
+              if (!wifi_scan_obj.seen_mac(mac_char)) {
+                wifi_scan_obj.save_mac(mac_char);
+
+                display_string = "Axon Device: ";
+                display_string.concat((String)rssi);
+                display_string.concat(F(" "));
+                Serial.print(F("Axon Device: "));
+                Serial.print(rssi);
+                Serial.print(F(" "));
+                if (name_length != 0)
+                {
+                  display_string.concat(name);
+                  Serial.println(name);
+                }
+                else
+                {
+                  display_string.concat(mac);
+                  Serial.println(mac);
+                }
+
+                #ifdef HAS_SCREEN
+                  uint8_t temp_len = display_string.length();
+                  for (uint8_t i = 0; i < 40 - temp_len; i++)
+                  {
+                    display_string.concat(" ");
+                  }
+
+                  display_obj.display_buffer->add(display_string);
+                #endif
+              }
+            }
+          }
           else if (wifi_scan_obj.currentScanMode == BT_SCAN_RAYBAN) { // Filters from https://github.com/NullPxl
             bool match = false;
 
@@ -1578,6 +1613,41 @@ extern "C" {
           else if (wifi_scan_obj.currentScanMode == WIFI_SCAN_DETECT_FOLLOW) {
 
             int frame_check = wifi_scan_obj.update_mac_entry(mac_char, rssi, true);
+          }
+          else if (wifi_scan_obj.currentScanMode == BT_SCAN_AXON) { // OUI filter ported from nyanBOX axon_detector
+            // Axon/TASER OUI 00:25:df (mac is lowercase, MSB first)
+            if (mac.startsWith("00:25:df")) {
+              if (!wifi_scan_obj.seen_mac(mac_char)) {
+                wifi_scan_obj.save_mac(mac_char);
+
+                display_string = "Axon Device: ";
+                display_string.concat((String)rssi);
+                display_string.concat(F(" "));
+                Serial.print(F("Axon Device: "));
+                Serial.print(rssi);
+                Serial.print(F(" "));
+                if (name_length != 0)
+                {
+                  display_string.concat(name);
+                  Serial.println(name);
+                }
+                else
+                {
+                  display_string.concat(mac);
+                  Serial.println(mac);
+                }
+
+                #ifdef HAS_SCREEN
+                  uint8_t temp_len = display_string.length();
+                  for (uint8_t i = 0; i < 40 - temp_len; i++)
+                  {
+                    display_string.concat(" ");
+                  }
+
+                  display_obj.display_buffer->add(display_string);
+                #endif
+              }
+            }
           }
           else if (wifi_scan_obj.currentScanMode == BT_SCAN_RAYBAN) { // Filters from https://github.com/NullPxl
             bool match = false;
@@ -2709,6 +2779,7 @@ void WiFiScan::StartScan(uint8_t scan_mode, uint16_t color) {
   else if ((scan_mode == BT_SCAN_ALL) ||
           (scan_mode == BT_SCAN_FOX_HUNT) ||
           (scan_mode == BT_SCAN_RAYBAN) ||
+          (scan_mode == BT_SCAN_AXON) ||
           (scan_mode == BT_SCAN_AIRTAG) ||
           (scan_mode == BT_SCAN_AIRTAG_MON) ||
           (scan_mode == BT_SCAN_FLIPPER) ||
@@ -3097,6 +3168,7 @@ void WiFiScan::StopScan(uint8_t scan_mode) {
   if ((currentScanMode == BT_SCAN_ALL) ||
   (currentScanMode == BT_SCAN_FOX_HUNT) ||
   (currentScanMode == BT_SCAN_RAYBAN) ||
+  (currentScanMode == BT_SCAN_AXON) ||
   (currentScanMode == BT_SCAN_AIRTAG) ||
   (currentScanMode == BT_SCAN_AIRTAG_MON) ||
   (currentScanMode == BT_SCAN_FLIPPER) ||
@@ -6923,7 +6995,8 @@ void WiFiScan::RunBluetoothScan(uint8_t scan_mode, uint16_t color) {
         (scan_mode == BT_SCAN_SIMPLE) ||
         (scan_mode == BT_SCAN_SIMPLE_TWO) ||
         (scan_mode == BT_SCAN_ANALYZER) ||
-        (scan_mode == BT_SCAN_RAYBAN))
+        (scan_mode == BT_SCAN_RAYBAN) ||
+        (scan_mode == BT_SCAN_AXON))
       NimBLEDevice::setScanDuplicateCacheSize(0);
     else {
       NimBLEDevice::setScanFilterMode(CONFIG_BTDM_SCAN_DUPL_TYPE_DEVICE);
@@ -6936,6 +7009,7 @@ void WiFiScan::RunBluetoothScan(uint8_t scan_mode, uint16_t color) {
     if ((scan_mode == BT_SCAN_ALL) ||
         (scan_mode == BT_SCAN_FOX_HUNT) ||
         (scan_mode == BT_SCAN_RAYBAN) ||
+        (scan_mode == BT_SCAN_AXON) ||
         (scan_mode == BT_SCAN_AIRTAG) ||
         (scan_mode == BT_SCAN_AIRTAG_MON) ||
         (scan_mode == BT_SCAN_FLIPPER) ||
@@ -6966,6 +7040,8 @@ void WiFiScan::RunBluetoothScan(uint8_t scan_mode, uint16_t color) {
             display_obj.tft.drawCentreString("Simple Sniff 2", TFT_WIDTH / 2, 16, 2);
           else if (scan_mode == BT_SCAN_RAYBAN)
             display_obj.tft.drawCentreString("Meta Detect",TFT_WIDTH / 2, 16, 2);
+          else if (scan_mode == BT_SCAN_AXON)
+            display_obj.tft.drawCentreString("Axon Detect",TFT_WIDTH / 2, 16, 2);
           #ifdef HAS_ILI9341
             if (scan_mode != BT_SCAN_FLOCK)
               display_obj.touchToExit();
@@ -6990,6 +7066,7 @@ void WiFiScan::RunBluetoothScan(uint8_t scan_mode, uint16_t color) {
       }
       else if ((scan_mode == BT_SCAN_FLIPPER) ||
                 (scan_mode == BT_SCAN_RAYBAN) ||
+                (scan_mode == BT_SCAN_AXON) ||
                 (scan_mode == BT_SCAN_FLOCK) ||
                 (scan_mode == BT_SCAN_SIMPLE) ||
                 (scan_mode == BT_SCAN_AIRTAG) ||
@@ -7059,6 +7136,7 @@ void WiFiScan::RunBluetoothScan(uint8_t scan_mode, uint16_t color) {
     pBLEScan->setWindow(30);  // less or equal setInterval value
     pBLEScan->setMaxResults(0);
     if ((scan_mode == BT_SCAN_RAYBAN) ||
+        (scan_mode == BT_SCAN_AXON) ||
         (scan_mode == WIFI_SCAN_WAR_DRIVE) ||
         (scan_mode == BT_SCAN_ANALYZER) ||
         (scan_mode == BT_SCAN_FLOCK) ||
@@ -12287,7 +12365,8 @@ void WiFiScan::main(uint32_t currentTime)
   else if ((currentScanMode == BT_SCAN_FLOCK) ||
           (currentScanMode == BT_SCAN_FLIPPER) ||
           (currentScanMode == BT_SCAN_AIRTAG) ||
-          (currentScanMode == BT_SCAN_RAYBAN)) {
+          (currentScanMode == BT_SCAN_RAYBAN) ||
+          (currentScanMode == BT_SCAN_AXON)) {
 
     if (currentTime - initTime >= this->channel_hop_delay * HOP_DELAY) {
       initTime = millis();

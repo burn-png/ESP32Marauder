@@ -1325,6 +1325,9 @@ void CommandLine::runCommand(String input) {
           else if (bt_type == "meta") {
             this->startScanFromCLI(BT_SCAN_RAYBAN, TFT_ORANGE, "Meta sniff");
           }
+          else if (bt_type == "axon") {
+            this->startScanFromCLI(BT_SCAN_AXON, TFT_ORANGE, "Axon sniff");
+          }
         }
         // General bluetooth sniff
         else {
