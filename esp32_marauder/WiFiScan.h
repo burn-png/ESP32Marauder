@@ -4,6 +4,7 @@
 #define WiFiScan_h
 
 #include "configs.h"
+#include "DroneID.h"
 #include "utils.h"
 #include "GpsTrackerStats.h"
 
@@ -177,6 +178,7 @@
 #define BT_FINDMY_SOUND 85
 #define BT_ATTACK_FINDMY_LIVE 86
 #define BT_SCAN_AXON 87
+#define BT_SCAN_DRONE 88
 
 #define WIFI_ATTACK_FUNNY_BEACON 99 
 

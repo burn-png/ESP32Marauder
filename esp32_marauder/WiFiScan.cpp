@@ -942,6 +942,66 @@ extern "C" {
           else if (wifi_scan_obj.currentScanMode == WIFI_SCAN_DETECT_FOLLOW) {
             int frame_check = wifi_scan_obj.update_mac_entry(mac_char, advertisedDevice->getRSSI(), true);
           }
+          else if (wifi_scan_obj.currentScanMode == BT_SCAN_DRONE) { // Open Drone ID (BLE) ported from nyanBOX drone_detector
+            #ifndef HAS_NIMBLE_2
+              uint8_t* dronePayLoad = advertisedDevice->getPayload();
+              size_t droneLen = advertisedDevice->getPayloadLength();
+              if (!dronePayLoad) {
+                wifi_scan_obj.bt_cb_busy = false;
+                return;
+              }
+            #else
+              const std::vector<unsigned char>& dronePayLoad = advertisedDevice->getPayload();
+              size_t droneLen = dronePayLoad.size();
+            #endif
+
+            ODID_BasicID_data drone_id;
+            ODID_Location_data drone_loc;
+            bool id_valid = false;
+            bool loc_valid = false;
+
+            #ifndef HAS_NIMBLE_2
+              bool drone_match = droneid_parse_payload(dronePayLoad, droneLen, &drone_id, &id_valid, &drone_loc, &loc_valid);
+            #else
+              bool drone_match = droneid_parse_payload((const uint8_t*)dronePayLoad.data(), droneLen, &drone_id, &id_valid, &drone_loc, &loc_valid);
+            #endif
+
+            if (drone_match) {
+              display_string = "Drone: ";
+              display_string.concat((String)rssi);
+              display_string.concat(F(" "));
+              Serial.print(F("Drone: "));
+              Serial.print(rssi);
+              Serial.print(F(" "));
+
+              if (id_valid && strlen(drone_id.UASID) != 0) {
+                display_string.concat(drone_id.UASID);
+                Serial.println(drone_id.UASID);
+              }
+              else if (loc_valid) {
+                display_string.concat((String)drone_loc.Latitude, 5);
+                display_string.concat(",");
+                display_string.concat((String)drone_loc.Longitude, 5);
+                Serial.print(drone_loc.Latitude, 5);
+                Serial.print(",");
+                Serial.println(drone_loc.Longitude, 5);
+              }
+              else {
+                display_string.concat(mac);
+                Serial.println(mac);
+              }
+
+              #ifdef HAS_SCREEN
+                uint8_t temp_len = display_string.length();
+                for (uint8_t i = 0; i < 40 - temp_len; i++)
+                {
+                  display_string.concat(" ");
+                }
+
+                display_obj.display_buffer->add(display_string);
+              #endif
+            }
+          }
           else if (wifi_scan_obj.currentScanMode == BT_SCAN_AXON) { // OUI filter ported from nyanBOX axon_detector
             // Axon/TASER OUI 00:25:df (mac is lowercase, MSB first)
             if (mac.startsWith("00:25:df")) {
@@ -1613,6 +1673,66 @@ extern "C" {
           else if (wifi_scan_obj.currentScanMode == WIFI_SCAN_DETECT_FOLLOW) {
 
             int frame_check = wifi_scan_obj.update_mac_entry(mac_char, rssi, true);
+          }
+          else if (wifi_scan_obj.currentScanMode == BT_SCAN_DRONE) { // Open Drone ID (BLE) ported from nyanBOX drone_detector
+            #ifndef HAS_NIMBLE_2
+              uint8_t* dronePayLoad = advertisedDevice->getPayload();
+              size_t droneLen = advertisedDevice->getPayloadLength();
+              if (!dronePayLoad) {
+                wifi_scan_obj.bt_cb_busy = false;
+                return;
+              }
+            #else
+              const std::vector<unsigned char>& dronePayLoad = advertisedDevice->getPayload();
+              size_t droneLen = dronePayLoad.size();
+            #endif
+
+            ODID_BasicID_data drone_id;
+            ODID_Location_data drone_loc;
+            bool id_valid = false;
+            bool loc_valid = false;
+
+            #ifndef HAS_NIMBLE_2
+              bool drone_match = droneid_parse_payload(dronePayLoad, droneLen, &drone_id, &id_valid, &drone_loc, &loc_valid);
+            #else
+              bool drone_match = droneid_parse_payload((const uint8_t*)dronePayLoad.data(), droneLen, &drone_id, &id_valid, &drone_loc, &loc_valid);
+            #endif
+
+            if (drone_match) {
+              display_string = "Drone: ";
+              display_string.concat((String)rssi);
+              display_string.concat(F(" "));
+              Serial.print(F("Drone: "));
+              Serial.print(rssi);
+              Serial.print(F(" "));
+
+              if (id_valid && strlen(drone_id.UASID) != 0) {
+                display_string.concat(drone_id.UASID);
+                Serial.println(drone_id.UASID);
+              }
+              else if (loc_valid) {
+                display_string.concat((String)drone_loc.Latitude, 5);
+                display_string.concat(",");
+                display_string.concat((String)drone_loc.Longitude, 5);
+                Serial.print(drone_loc.Latitude, 5);
+                Serial.print(",");
+                Serial.println(drone_loc.Longitude, 5);
+              }
+              else {
+                display_string.concat(mac);
+                Serial.println(mac);
+              }
+
+              #ifdef HAS_SCREEN
+                uint8_t temp_len = display_string.length();
+                for (uint8_t i = 0; i < 40 - temp_len; i++)
+                {
+                  display_string.concat(" ");
+                }
+
+                display_obj.display_buffer->add(display_string);
+              #endif
+            }
           }
           else if (wifi_scan_obj.currentScanMode == BT_SCAN_AXON) { // OUI filter ported from nyanBOX axon_detector
             // Axon/TASER OUI 00:25:df (mac is lowercase, MSB first)
@@ -2780,6 +2900,7 @@ void WiFiScan::StartScan(uint8_t scan_mode, uint16_t color) {
           (scan_mode == BT_SCAN_FOX_HUNT) ||
           (scan_mode == BT_SCAN_RAYBAN) ||
           (scan_mode == BT_SCAN_AXON) ||
+          (scan_mode == BT_SCAN_DRONE) ||
           (scan_mode == BT_SCAN_AIRTAG) ||
           (scan_mode == BT_SCAN_AIRTAG_MON) ||
           (scan_mode == BT_SCAN_FLIPPER) ||
@@ -2787,7 +2908,7 @@ void WiFiScan::StartScan(uint8_t scan_mode, uint16_t color) {
           (scan_mode == BT_SCAN_ANALYZER) ||
           (scan_mode == BT_SCAN_SIMPLE) ||
           (scan_mode == BT_SCAN_SIMPLE_TWO)) {
-    if (scan_mode == BT_SCAN_FLOCK)
+    if ((scan_mode == BT_SCAN_FLOCK) || (scan_mode == BT_SCAN_DRONE))
       this->RunProbeScan(scan_mode, color);
 
     #ifdef HAS_BT
@@ -3169,6 +3290,7 @@ void WiFiScan::StopScan(uint8_t scan_mode) {
   (currentScanMode == BT_SCAN_FOX_HUNT) ||
   (currentScanMode == BT_SCAN_RAYBAN) ||
   (currentScanMode == BT_SCAN_AXON) ||
+  (currentScanMode == BT_SCAN_DRONE) ||
   (currentScanMode == BT_SCAN_AIRTAG) ||
   (currentScanMode == BT_SCAN_AIRTAG_MON) ||
   (currentScanMode == BT_SCAN_FLIPPER) ||
@@ -6857,6 +6979,8 @@ void WiFiScan::RunProbeScan(uint8_t scan_mode, uint16_t color) {
     startPcap("probe");
   else if (scan_mode == BT_SCAN_FLOCK)
     startPcap("flock");
+  else if (scan_mode == BT_SCAN_DRONE)
+    startPcap("drone");
   else if (scan_mode == WIFI_SCAN_DETECT_FOLLOW)
     startPcap("mac_track");
 
@@ -6870,6 +6994,9 @@ void WiFiScan::RunProbeScan(uint8_t scan_mode, uint16_t color) {
         display_obj.tft.drawCentreString(text_table4[40],TFT_WIDTH / 2,16,2);
       else if (scan_mode == WIFI_SCAN_DETECT_FOLLOW) 
         display_obj.tft.drawCentreString("MAC Monitor",TFT_WIDTH / 2,16,2);
+      else if (scan_mode == BT_SCAN_DRONE) {
+        display_obj.tft.drawCentreString("Drone Detect",TFT_WIDTH / 2,16,2);
+      }
       else {
         display_obj.tft.drawCentreString("Flock Sniff",TFT_WIDTH / 2,16,2);
       }
@@ -6996,7 +7123,8 @@ void WiFiScan::RunBluetoothScan(uint8_t scan_mode, uint16_t color) {
         (scan_mode == BT_SCAN_SIMPLE_TWO) ||
         (scan_mode == BT_SCAN_ANALYZER) ||
         (scan_mode == BT_SCAN_RAYBAN) ||
-        (scan_mode == BT_SCAN_AXON))
+        (scan_mode == BT_SCAN_AXON) ||
+        (scan_mode == BT_SCAN_DRONE))
       NimBLEDevice::setScanDuplicateCacheSize(0);
     else {
       NimBLEDevice::setScanFilterMode(CONFIG_BTDM_SCAN_DUPL_TYPE_DEVICE);
@@ -7010,6 +7138,7 @@ void WiFiScan::RunBluetoothScan(uint8_t scan_mode, uint16_t color) {
         (scan_mode == BT_SCAN_FOX_HUNT) ||
         (scan_mode == BT_SCAN_RAYBAN) ||
         (scan_mode == BT_SCAN_AXON) ||
+        (scan_mode == BT_SCAN_DRONE) ||
         (scan_mode == BT_SCAN_AIRTAG) ||
         (scan_mode == BT_SCAN_AIRTAG_MON) ||
         (scan_mode == BT_SCAN_FLIPPER) ||
@@ -7042,6 +7171,8 @@ void WiFiScan::RunBluetoothScan(uint8_t scan_mode, uint16_t color) {
             display_obj.tft.drawCentreString("Meta Detect",TFT_WIDTH / 2, 16, 2);
           else if (scan_mode == BT_SCAN_AXON)
             display_obj.tft.drawCentreString("Axon Detect",TFT_WIDTH / 2, 16, 2);
+          else if (scan_mode == BT_SCAN_DRONE)
+            display_obj.tft.drawCentreString("Drone Detect",TFT_WIDTH / 2, 16, 2);
           #ifdef HAS_ILI9341
             if (scan_mode != BT_SCAN_FLOCK)
               display_obj.touchToExit();
@@ -7067,6 +7198,7 @@ void WiFiScan::RunBluetoothScan(uint8_t scan_mode, uint16_t color) {
       else if ((scan_mode == BT_SCAN_FLIPPER) ||
                 (scan_mode == BT_SCAN_RAYBAN) ||
                 (scan_mode == BT_SCAN_AXON) ||
+                (scan_mode == BT_SCAN_DRONE) ||
                 (scan_mode == BT_SCAN_FLOCK) ||
                 (scan_mode == BT_SCAN_SIMPLE) ||
                 (scan_mode == BT_SCAN_AIRTAG) ||
@@ -7137,6 +7269,7 @@ void WiFiScan::RunBluetoothScan(uint8_t scan_mode, uint16_t color) {
     pBLEScan->setMaxResults(0);
     if ((scan_mode == BT_SCAN_RAYBAN) ||
         (scan_mode == BT_SCAN_AXON) ||
+        (scan_mode == BT_SCAN_DRONE) ||
         (scan_mode == WIFI_SCAN_WAR_DRIVE) ||
         (scan_mode == BT_SCAN_ANALYZER) ||
         (scan_mode == BT_SCAN_FLOCK) ||
@@ -9076,6 +9209,61 @@ void WiFiScan::beaconSnifferCallback(void* buf, wifi_promiscuous_pkt_type_t type
             }
           #endif
         }
+      }
+    }
+  }
+  else if (wifi_scan_obj.currentScanMode == BT_SCAN_DRONE) { // Open Drone ID (WiFi NAN/beacon) ported from nyanBOX drone_detector
+    if (type == WIFI_PKT_MGMT) {
+      len -= 4;
+
+      ODID_BasicID_data drone_id;
+      ODID_Location_data drone_loc;
+      bool id_valid = false;
+      bool loc_valid = false;
+      bool is_nan = false;
+
+      if (droneid_parse_80211(snifferPacket->payload, len, &drone_id, &id_valid, &drone_loc, &loc_valid, &is_nan)) {
+        display_string = "Drone: ";
+        display_string.concat((String)snifferPacket->rx_ctrl.rssi);
+        display_string.concat(is_nan ? F(" NAN ") : F(" WiFi "));
+        Serial.print(F("Drone: "));
+        Serial.print(snifferPacket->rx_ctrl.rssi);
+        Serial.print(is_nan ? F(" NAN ") : F(" WiFi "));
+
+        if (id_valid && strlen(drone_id.UASID) != 0) {
+          display_string.concat(drone_id.UASID);
+          Serial.println(drone_id.UASID);
+        }
+        else if (loc_valid) {
+          display_string.concat((String)drone_loc.Latitude, 5);
+          display_string.concat(",");
+          display_string.concat((String)drone_loc.Longitude, 5);
+          Serial.print(drone_loc.Latitude, 5);
+          Serial.print(",");
+          Serial.println(drone_loc.Longitude, 5);
+        }
+        else {
+          display_string.concat(addr);
+          Serial.println(addr);
+        }
+
+        #ifdef HAS_SCREEN
+          if (!wifi_scan_obj.seen_mac(src_addr)) {
+            wifi_scan_obj.save_mac(src_addr);
+
+            uint8_t temp_len = display_string.length();
+            for (uint8_t i = 0; i < 40 - temp_len; i++)
+            {
+              display_string.concat(" ");
+            }
+
+            if (!display_obj.printing) {
+              display_obj.loading = true;
+              display_obj.display_buffer->add(display_string);
+              display_obj.loading = false;
+            }
+          }
+        #endif
       }
     }
   }
@@ -12366,7 +12554,8 @@ void WiFiScan::main(uint32_t currentTime)
           (currentScanMode == BT_SCAN_FLIPPER) ||
           (currentScanMode == BT_SCAN_AIRTAG) ||
           (currentScanMode == BT_SCAN_RAYBAN) ||
-          (currentScanMode == BT_SCAN_AXON)) {
+          (currentScanMode == BT_SCAN_AXON) ||
+          (currentScanMode == BT_SCAN_DRONE)) {
 
     if (currentTime - initTime >= this->channel_hop_delay * HOP_DELAY) {
       initTime = millis();

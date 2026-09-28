@@ -1328,6 +1328,9 @@ void CommandLine::runCommand(String input) {
           else if (bt_type == "axon") {
             this->startScanFromCLI(BT_SCAN_AXON, TFT_ORANGE, "Axon sniff");
           }
+          else if (bt_type == "drone") {
+            this->startScanFromCLI(BT_SCAN_DRONE, TFT_ORANGE, "Drone sniff");
+          }
         }
         // General bluetooth sniff
         else {
